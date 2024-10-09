@@ -146,6 +146,7 @@ EOF"; then
     fi
 
     echo "节点启动成功！"
+    read -n 1 -s  # 等待用户按任意键
 }
 
 # 查看 Prover 状态的函数
