@@ -38,9 +38,10 @@ function main_menu() {
         echo "2. 查看 Prover 状态"
         echo "3. 查看日志"
         echo "4. 删除节点"
-        echo "5. 退出"
+        echo "5. 显示 ID"  # 新增选项
+        echo "6. 退出"  # 更新退出选项
         
-        read -p "请输入选项 (1-5): " choice
+        read -p "请输入选项 (1-6): " choice
         
         case $choice in
             1)
@@ -56,6 +57,9 @@ function main_menu() {
                 delete_node  # 调用删除节点函数
                 ;;
             5)
+                show_id  # 调用显示 ID 函数
+                ;;
+            6)
                 echo "退出脚本。"
                 exit 0
                 ;;
@@ -64,6 +68,16 @@ function main_menu() {
                 ;;
         esac
     done
+}
+
+# 显示 ID 的函数
+function show_id() {
+    if [ -f /root/.nexus/prover-id ]; then
+        echo "Prover ID 内容:"
+        cat /root/.nexus/prover-id  # 显示文件内容
+    else
+        echo "文件 /root/.nexus/prover-id 不存在。"
+    fi
 }
 
 # 启动节点的函数
