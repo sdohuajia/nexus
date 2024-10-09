@@ -29,7 +29,7 @@ function main_menu() {
         echo "3. 查看日志"
         echo "4. 删除节点"
         echo "5. 显示 ID"  # 新增选项
-        echo "6. 退出"  # 更新退出选项
+        echo "6. 改进的状态逻辑"  # 新增选项
         
         read -p "请输入选项 (1-6): " choice
         
@@ -50,8 +50,7 @@ function main_menu() {
                 show_id  # 调用显示 ID 函数
                 ;;
             6)
-                echo "退出脚本。"
-                exit 0
+                improved_status_logic  # 调用改进的状态逻辑函数
                 ;;
             *)
                 echo "无效选项，请重新选择。"
@@ -182,6 +181,22 @@ function delete_node() {
     
     # 等待用户按任意键返回主菜单
     read -p "按任意键返回主菜单"
+}
+
+# 改进的状态逻辑函数
+function improved_status_logic() {
+    if sudo systemctl is-active --quiet $SERVICE_NAME.service; then
+        show_status "服务正在运行。" 
+    else
+        show_status "获取服务状态失败。" 
+    fi
+
+    show_status "Nexus Prover 安装和服务设置完成！" 
+}
+
+# 显示状态的函数
+function show_status() {
+    echo "\$1"
 }
 
 # 调用主菜单函数
