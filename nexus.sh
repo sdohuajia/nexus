@@ -79,7 +79,8 @@ function show_id() {
         echo "文件 /root/.nexus/prover-id 不存在。"
     fi
 
-    read -n 1 -s  # 等待用户按任意键
+    # 等待用户按任意键返回主菜单
+    read -p "按任意键返回主菜单"
 }
 
 # 启动节点的函数
@@ -162,7 +163,9 @@ EOF"; then
     fi
 
     echo "节点启动成功！"
-    read -n 1 -s  # 等待用户按任意键
+    
+    # 等待用户按任意键返回主菜单
+    read -p "按任意键返回主菜单"
 }
 
 # 查看 Prover 状态的函数
@@ -183,7 +186,9 @@ function delete_node() {
     sudo systemctl stop $SERVICE_NAME.service
     sudo systemctl disable $SERVICE_NAME.service
     echo "成功删除节点，按任意键返回主菜单。"
-    read -n 1 -s  # 等待用户按任意键
+    
+    # 等待用户按任意键返回主菜单
+    read -p "按任意键返回主菜单"
 }
 
 # 调用主菜单函数
