@@ -30,8 +30,9 @@ function main_menu() {
         echo "4. 删除节点"
         echo "5. 显示 ID"  # 新增选项
         echo "6. 改进的状态逻辑"  # 新增选项
+        echo "7) 退出"
         
-        read -p "请输入选项 (1-6): " choice
+        read -p "请输入选项 (1-7): " choice
         
         case $choice in
             1)
@@ -51,6 +52,10 @@ function main_menu() {
                 ;;
             6)
                 improved_status_logic  # 调用改进的状态逻辑函数
+                ;;
+            7)
+                echo "退出脚本。"
+                exit 0
                 ;;
             *)
                 echo "无效选项，请重新选择。"
