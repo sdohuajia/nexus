@@ -78,6 +78,8 @@ function show_id() {
     else
         echo "文件 /root/.nexus/prover-id 不存在。"
     fi
+
+    read -n 1 -s  # 等待用户按任意键
 }
 
 # 启动节点的函数
