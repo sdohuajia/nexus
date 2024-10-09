@@ -1,28 +1,8 @@
 #!/bin/bash
 
-# 自定义状态显示函数
-show_status() {
-    local message="$1"
-    local status="$2"
-    case $status in
-        "error")
-            echo -e "${RED}${BOLD}🚫 出错: ${message}${NORMAL}"
-            ;;
-        "progress")
-            echo -e "${YELLOW}${BOLD}🔄 进行中: ${message}${NORMAL}"
-            ;;
-        "success")
-            echo -e "${GREEN}${BOLD}✅ 成功: ${message}${NORMAL}"
-            ;;
-        *)
-            echo -e "${PINK}${BOLD}${message}${NORMAL}"
-            ;;
-    esac
-}
-
 # 定义服务名称和文件路径
 SERVICE_NAME="nexus"
-SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
+SERVICE_FILE="/etc/systemd/system/nexus.service"  # 更新服务文件路径
 
 # 主菜单函数
 function main_menu() {
@@ -116,15 +96,15 @@ function start_node() {
 
     # 安装依赖项
     cd $HOME/network-api/clients/cli
-    show_status "安装所需的依赖项..." 
+    echo "安装所需的依赖项..." 
     if ! sudo apt install pkg-config libssl-dev -y; then
-        show_status "安装依赖项失败。" "error"
+        echo "安装依赖项失败。"  # 错误信息
         exit 1
     fi
 
     # 创建 systemd 服务文件
-    show_status "创建 systemd 服务..." 
-    SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"  # 定义服务文件路径
+    echo "创建 systemd 服务..." 
+    SERVICE_FILE="/etc/systemd/system/nexus.service"  # 更新服务文件路径
     if ! sudo bash -c "cat > $SERVICE_FILE <<EOF
 [Unit]
 Description=Nexus XYZ Prover Service
@@ -141,24 +121,24 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 EOF"; then
-        show_status "创建 systemd 服务文件失败。" 
+        echo "创建 systemd 服务文件失败。" 
         exit 1
     fi
 
     # 重新加载 systemd 并启动服务
-    show_status "重新加载 systemd 并启动服务..." 
+    echo "重新加载 systemd 并启动服务..." 
     if ! sudo systemctl daemon-reload; then
-        show_status "重新加载 systemd 失败。"
+        echo "重新加载 systemd 失败。"
         exit 1
     fi
 
-    if ! sudo systemctl start $SERVICE_NAME.service; then
-        show_status "启动服务失败。" 
+    if ! sudo systemctl start nexus.service; then
+        echo "启动服务失败。" 
         exit 1
     fi
 
-    if ! sudo systemctl enable $SERVICE_NAME.service; then
-        show_status "启用服务失败。" 
+    if ! sudo systemctl enable nexus.service; then
+        echo "启用服务失败。" 
         exit 1
     fi
 
@@ -171,20 +151,20 @@ EOF"; then
 # 查看 Prover 状态的函数
 function check_prover_status() {
     echo "查看 Prover 状态..."
-    systemctl status $SERVICE_NAME.service
+    systemctl status nexus.service
 }
 
 # 查看日志的函数
 function view_logs() {
     echo "查看 Prover 日志..."
-    journalctl -u $SERVICE_NAME.service -f -n 50
+    journalctl -u nexus.service -f -n 50
 }
 
 # 删除节点的函数
 function delete_node() {
     echo "正在删除节点..."
-    sudo systemctl stop $SERVICE_NAME.service
-    sudo systemctl disable $SERVICE_NAME.service
+    sudo systemctl stop nexus.service
+    sudo systemctl disable nexus.service
     echo "成功删除节点，按任意键返回主菜单。"
     
     # 等待用户按任意键返回主菜单
