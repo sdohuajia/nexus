@@ -20,6 +20,10 @@ show_status() {
     esac
 }
 
+# 定义服务名称和文件路径
+SERVICE_NAME="nexus"
+SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
+
 # 主菜单函数
 function main_menu() {
     while true; do
