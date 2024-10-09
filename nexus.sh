@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# 自定义状态显示函数
+show_status() {
+    local message="$1"
+    local status="$2"
+    case $status in
+        "error")
+            echo -e "${RED}${BOLD}🚫 出错: ${message}${NORMAL}"
+            ;;
+        "progress")
+            echo -e "${YELLOW}${BOLD}🔄 进行中: ${message}${NORMAL}"
+            ;;
+        "success")
+            echo -e "${GREEN}${BOLD}✅ 成功: ${message}${NORMAL}"
+            ;;
+        *)
+            echo -e "${PINK}${BOLD}${message}${NORMAL}"
+            ;;
+    esac
+}
+
 # 主菜单函数
 function main_menu() {
     while true; do
