@@ -99,14 +99,14 @@ function start_node() {
 
     # 安装依赖项
     cd $HOME/network-api/clients/cli
-    show_status "安装所需的依赖项..." "progress"
+    show_status "安装所需的依赖项..." 
     if ! sudo apt install pkg-config libssl-dev -y; then
         show_status "安装依赖项失败。" "error"
         exit 1
     fi
 
     # 创建 systemd 服务文件
-    show_status "创建 systemd 服务..." "progress"
+    show_status "创建 systemd 服务..." 
     SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"  # 定义服务文件路径
     if ! sudo bash -c "cat > $SERVICE_FILE <<EOF
 [Unit]
@@ -124,24 +124,24 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 EOF"; then
-        show_status "创建 systemd 服务文件失败。" "error"
+        show_status "创建 systemd 服务文件失败。" 
         exit 1
     fi
 
     # 重新加载 systemd 并启动服务
-    show_status "重新加载 systemd 并启动服务..." "progress"
+    show_status "重新加载 systemd 并启动服务..." 
     if ! sudo systemctl daemon-reload; then
-        show_status "重新加载 systemd 失败。" "error"
+        show_status "重新加载 systemd 失败。"
         exit 1
     fi
 
     if ! sudo systemctl start $SERVICE_NAME.service; then
-        show_status "启动服务失败。" "error"
+        show_status "启动服务失败。" 
         exit 1
     fi
 
     if ! sudo systemctl enable $SERVICE_NAME.service; then
-        show_status "启用服务失败。" "error"
+        show_status "启用服务失败。" 
         exit 1
     fi
 
