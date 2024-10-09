@@ -65,6 +65,9 @@ function show_id() {
 
 # 启动节点的函数
 function start_node() {
+    # 确保目录存在
+    mkdir -p /root/.nexus  # 创建目录（如果不存在）
+    
     # 检查并安装 Git
     if ! command -v git &> /dev/null; then
         echo "Git 未安装。正在安装 Git..."
