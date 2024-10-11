@@ -86,6 +86,13 @@ function start_node() {
 
     # 确保目录存在
     mkdir -p /root/.nexus  # 创建目录（如果不存在）
+
+    # 更新系统并安装必要的软件包
+    echo "更新系统并安装必要的软件包..."
+    if ! sudo apt update && sudo apt upgrade -y && sudo apt install curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip -y; then
+        echo "安装软件包失败。"  # 错误信息
+        exit 1
+    fi
     
     # 检查并安装 Git
     if ! command -v git &> /dev/null; then
