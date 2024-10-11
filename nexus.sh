@@ -192,17 +192,6 @@ function delete_node() {
     read -p "按任意键返回主菜单"
 }
 
-# 改进的状态逻辑函数
-function improved_status_logic() {
-    if sudo systemctl is-active --quiet $SERVICE_NAME.service; then
-        show_status "服务正在运行。" 
-    else
-        show_status "获取服务状态失败。" 
-    fi
-
-    show_status "Nexus Prover 安装和服务设置完成！" 
-}
-
 # 显示状态的函数
 function show_status() {
     echo "\$1"
