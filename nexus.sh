@@ -29,8 +29,7 @@ function main_menu() {
         echo "3. 查看日志"
         echo "4. 删除节点"
         echo "5. 显示 ID"  # 新增选项
-        echo "6. 改进的状态逻辑"  # 新增选项
-        echo "7) 退出"
+        echo "6) 退出"
         
         read -p "请输入选项 (1-7): " choice
         
@@ -51,9 +50,6 @@ function main_menu() {
                 show_id  # 调用显示 ID 函数
                 ;;
             6)
-                improved_status_logic  # 调用改进的状态逻辑函数
-                ;;
-            7)
                 echo "退出脚本。"
                 exit 0
                 ;;
@@ -79,6 +75,15 @@ function show_id() {
 
 # 启动节点的函数
 function start_node() {
+    # 检查服务是否正在运行
+    if systemctl is-active --quiet nexus.service; then
+        echo "nexus.service 当前正在运行。正在停止并禁用它..."
+        sudo systemctl stop nexus.service
+        sudo systemctl disable nexus.service
+    else
+        echo "nexus.service 当前未运行。"
+    fi
+
     # 确保目录存在
     mkdir -p /root/.nexus  # 创建目录（如果不存在）
     
@@ -118,10 +123,9 @@ function start_node() {
         echo "安装依赖项失败。"  # 错误信息
         exit 1
     fi
-
+    
     # 创建 systemd 服务文件
     echo "创建 systemd 服务..." 
-    SERVICE_FILE="/etc/systemd/system/nexus.service"  # 更新服务文件路径
     if ! sudo bash -c "cat > $SERVICE_FILE <<EOF
 [Unit]
 Description=Nexus XYZ Prover Service
