@@ -116,6 +116,7 @@ function start_node() {
         
         # 加载 Rust 环境
         source $HOME/.cargo/env
+        export PATH="$HOME/.cargo/bin:$PATH"
         echo "Rust 环境已加载。"
     fi
 
@@ -148,7 +149,6 @@ After=network.target
 User=$USER
 WorkingDirectory=$HOME/network-api/clients/cli
 Environment=NONINTERACTIVE=1
-Environment=PATH=/root/.cargo/bin:$PATH
 ExecStart=$HOME/.cargo/bin/cargo run --release --bin prover -- beta.orchestrator.nexus.xyz
 Restart=always
 RestartSec=10
