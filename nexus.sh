@@ -187,6 +187,7 @@ function delete_node() {
     sudo systemctl stop nexus.service
     sudo systemctl disable nexus.service
     rm -rf /root/network-api
+    rm -rf /etc/systemd/system/nexus.service
     echo "成功删除节点，按任意键返回主菜单。"
     
     # 等待用户按任意键返回主菜单
