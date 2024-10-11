@@ -99,19 +99,16 @@ function start_node() {
     fi
 
     # 检查 Rust 是否已安装
-    if command -v rustc &> /dev/null; then
-        echo "Rust 已安装，版本为: $(rustc --version)"
-    else
-        echo "Rust 未安装，正在安装 Rust..."
-        # 使用 rustup 安装 Rust
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-        echo "Rust 安装完成。"
-        
-        # 加载 Rust 环境
-        source $HOME/.cargo/env
-        echo "Rust 环境已加载。"
+    if ! source <(wget -O - https://raw.githubusercontent.com/sdohuajia/rust/refs/heads/main/rust.sh); then
+    show "安装 Rust 失败。" "error"
+    exit 1
     fi
 
+    if [ -d "$HOME/network-api" ]; then
+    show "正在删除现有的仓库..." "progress"
+    rm -rf "$HOME/network-api"
+    fi
+    
     # 克隆指定的 GitHub 仓库
     echo "正在克隆仓库..."
     cd
