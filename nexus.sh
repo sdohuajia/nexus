@@ -114,6 +114,7 @@ function start_node() {
 
     # 克隆指定的 GitHub 仓库
     echo "正在克隆仓库..."
+    cd
     git clone https://github.com/nexus-xyz/network-api.git
 
     # 安装依赖项
