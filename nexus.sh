@@ -28,8 +28,9 @@ function main_menu() {
         echo "2. 查看 Prover 状态"
         echo "3. 查看日志"
         echo "4. 删除节点"
-        echo "5. 显示 ID"  # 新增选项
-        echo "6) 退出"
+        echo "5. 显示 ID" 
+        echo "6. 升级节点"  # 新增升级选项
+        echo "7) 退出"
         
         read -p "请输入选项 (1-7): " choice
         
@@ -50,6 +51,9 @@ function main_menu() {
                 show_id  # 调用显示 ID 函数
                 ;;
             6)
+                upgrade_node  # 调用升级节点函数
+                ;;
+            7)
                 echo "退出脚本。"
                 exit 0
                 ;;
@@ -218,6 +222,37 @@ function delete_node() {
 # 显示状态的函数
 function show_status() {
     echo "\$1"
+}
+
+# 新增升级节点的函数
+function upgrade_node() {
+    echo "开始升级节点..."
+    
+    # 停止服务
+    sudo systemctl stop nexus.service
+    
+    # 备份原有目录
+    if [ -d "$HOME/network-api" ]; then
+        echo "备份原有代码..."
+        mv "$HOME/network-api" "$HOME/network-api_backup_$(date +%Y%m%d_%H%M%S)"
+    fi
+    
+    # 重新克隆最新代码
+    echo "获取最新代码..."
+    cd $HOME
+    git clone https://github.com/nexus-xyz/network-api.git
+    
+    # 启动服务
+    echo "重启服务..."
+    sudo systemctl start nexus.service
+    
+    echo "升级完成！"
+    echo "查看日志确认运行状态..."
+    sleep 2
+    journalctl -u nexus.service -n 20 --no-pager
+    
+    # 等待用户按任意键返回主菜单
+    read -p "按任意键返回主菜单"
 }
 
 # 调用主菜单函数
