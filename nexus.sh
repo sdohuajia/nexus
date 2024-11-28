@@ -157,10 +157,10 @@ After=network.target
 
 [Service]
 User=$USER
-WorkingDirectory=$HOME/network-api/clients/cli
+WorkingDirectory=$HOME/.nexus/network-api/clients/cli 
 Environment=NONINTERACTIVE=1
 Environment=PATH=/root/.cargo/bin:$PATH
-ExecStart=$HOME/.cargo/bin/cargo run --release --bin prover -- beta.orchestrator.nexus.xyz
+ExecStart=$HOME/.cargo/bin/cargo run --release --bin prover -- beta.orchestrator.nexus.xyz:443
 Restart=always
 RestartSec=10
 
