@@ -2,7 +2,7 @@
 
 # 定义服务名称和文件路径
 SERVICE_NAME="nexus"
-SERVICE_FILE="/etc/systemd/system/nexus.service"  # 更新服务文件路径
+SERVICE_FILE="/etc/systemd/system/nexus.service"
 
 # 脚本保存路径
 SCRIPT_PATH="$HOME/nexus.sh"
@@ -29,29 +29,29 @@ function main_menu() {
         echo "3. 查看日志"
         echo "4. 删除节点"
         echo "5. 显示 ID" 
-        echo "6. 升级节点"  # 新增升级选项
+        echo "6. 升级节点"
         echo "7) 退出"
         
         read -p "请输入选项 (1-7): " choice
         
         case $choice in
             1)
-                start_node  # 调用启动节点函数
+                start_node
                 ;;
             2)
-                check_prover_status  # 调用查看 Prover 状态函数
+                check_prover_status
                 ;;
             3)
-                view_logs  # 调用查看日志函数
+                view_logs
                 ;;
             4)
-                delete_node  # 调用删除节点函数
+                delete_node
                 ;;
             5)
-                show_id  # 调用显示 ID 函数
+                show_id
                 ;;
             6)
-                upgrade_node  # 调用升级节点函数
+                upgrade_node
                 ;;
             7)
                 echo "退出脚本。"
@@ -68,12 +68,10 @@ function main_menu() {
 function show_id() {
     if [ -f /root/.nexus/prover-id ]; then
         echo "Prover ID 内容:"
-        echo "$(</root/.nexus/prover-id)"  # 使用 echo 显示文件内容
+        echo "$(</root/.nexus/prover-id)"
     else
         echo "文件 /root/.nexus/prover-id 不存在。"
     fi
-
-    # 等待用户按任意键返回主菜单
     read -p "按任意键返回主菜单"
 }
 
@@ -89,30 +87,30 @@ function start_node() {
     fi
 
     # 确保目录存在
-    mkdir -p /root/.nexus  # 创建目录（如果不存在）
+    mkdir -p /root/.nexus
 
     # 更新系统并安装必要的软件包
     echo "更新系统并安装必要的软件包..."
     if ! sudo apt update && sudo apt upgrade -y && sudo apt install curl iptables git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip -y; then
-    echo "安装软件包失败。"  # 错误信息
-    exit 1
+        echo "安装软件包失败。"
+        exit 1
     fi
 
     # 单独安装 build-essential
     if ! sudo apt install build-essential -y; then
-    echo "安装 build-essential 失败。"  # 错误信息
-    exit 1
+        echo "安装 build-essential 失败。"
+        exit 1
     fi
 
     # 检查并安装 Git
     if ! command -v git &> /dev/null; then
         echo "Git 未安装。正在安装 Git..."
         if ! sudo apt install git -y; then
-            echo "安装 Git 失败。"  # 错误信息
+            echo "安装 Git 失败。"
             exit 1
         fi
     else
-        echo "Git 已安装。"  # 成功信息
+        echo "Git 已安装。"
     fi
 
     # 检查 Rust 是否已安装
@@ -130,21 +128,22 @@ function start_node() {
         echo "Rust 环境已加载。"
     fi
 
+    # 删除现有的仓库（如果存在）
     if [ -d "$HOME/network-api" ]; then
-    show "正在删除现有的仓库..." "progress"
-    rm -rf "$HOME/network-api"
+        echo "正在删除现有的仓库..."
+        rm -rf "$HOME/network-api"
     fi
     
     # 克隆指定的 GitHub 仓库
     echo "正在克隆仓库..."
-    cd
+    cd $HOME
     git clone https://github.com/nexus-xyz/network-api.git
 
     # 安装依赖项
     cd $HOME/network-api/clients/cli
     echo "安装所需的依赖项..." 
     if ! sudo apt install pkg-config libssl-dev -y; then
-        echo "安装依赖项失败。"  # 错误信息
+        echo "安装依赖项失败。"
         exit 1
     fi
     
@@ -157,7 +156,7 @@ After=network.target
 
 [Service]
 User=$USER
-WorkingDirectory=$HOME/.nexus/network-api/clients/cli 
+WorkingDirectory=$HOME/network-api/clients/cli 
 Environment=NONINTERACTIVE=1
 Environment=PATH=/root/.cargo/bin:$PATH
 ExecStart=$HOME/.cargo/bin/cargo run --release --bin prover -- beta.orchestrator.nexus.xyz:443
@@ -167,7 +166,7 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 EOF"; then
-        echo "创建 systemd 服务文件失败。" 
+        echo "创建 systemd 服务文件失败。"
         exit 1
     fi
 
@@ -179,18 +178,16 @@ EOF"; then
     fi
 
     if ! sudo systemctl start nexus.service; then
-        echo "启动服务失败。" 
+        echo "启动服务失败。"
         exit 1
     fi
 
     if ! sudo systemctl enable nexus.service; then
-        echo "启用服务失败。" 
+        echo "启用服务失败。"
         exit 1
     fi
 
     echo "节点启动成功！"
-    
-    # 等待用户按任意键返回主菜单
     read -p "按任意键返回主菜单"
 }
 
@@ -212,19 +209,12 @@ function delete_node() {
     sudo systemctl stop nexus.service
     sudo systemctl disable nexus.service
     rm -rf /root/network-api
-    rm -rf /etc/systemd/system/nexus.service
+    rm -rf $SERVICE_FILE
     echo "成功删除节点，按任意键返回主菜单。"
-    
-    # 等待用户按任意键返回主菜单
     read -p "按任意键返回主菜单"
 }
 
-# 显示状态的函数
-function show_status() {
-    echo "\$1"
-}
-
-# 新增升级节点的函数
+# 升级节点的函数
 function upgrade_node() {
     echo "开始升级节点..."
     
@@ -242,16 +232,56 @@ function upgrade_node() {
     cd $HOME
     git clone https://github.com/nexus-xyz/network-api.git
     
+    # 进入新克隆的仓库目录并安装依赖项
+    cd $HOME/network-api/clients/cli
+    echo "安装依赖项..."
+    if ! sudo apt install pkg-config libssl-dev -y; then
+        echo "安装依赖项失败。"
+        exit 1
+    fi
+    
+    # 构建项目
+    echo "构建项目..."
+    if ! cargo build --release; then
+        echo "构建项目失败。"
+        exit 1
+    fi
+    
+    # 更新服务文件
+    echo "更新服务文件..."
+    if ! sudo bash -c "cat > $SERVICE_FILE <<EOF
+[Unit]
+Description=Nexus XYZ Prover Service
+After=network.target
+
+[Service]
+User=$USER
+WorkingDirectory=$HOME/network-api/clients/cli 
+Environment=NONINTERACTIVE=1
+Environment=PATH=/root/.cargo/bin:$PATH
+ExecStart=$HOME/.cargo/bin/cargo run --release --bin prover -- beta.orchestrator.nexus.xyz:443
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF"; then
+        echo "更新 systemd 服务文件失败。"
+        exit 1
+    fi
+
     # 启动服务
     echo "重启服务..."
-    sudo systemctl start nexus.service
-    
+    if ! sudo systemctl start nexus.service; then
+        echo "启动服务失败。"
+        exit 1
+    fi
+
     echo "升级完成！"
     echo "查看日志确认运行状态..."
     sleep 2
     journalctl -u nexus.service -n 20 --no-pager
     
-    # 等待用户按任意键返回主菜单
     read -p "按任意键返回主菜单"
 }
 
