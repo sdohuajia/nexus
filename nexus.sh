@@ -103,6 +103,15 @@ function start_node() {
         exit 1
     fi
 
+    # 下载并安装 protoc
+    echo "正在下载并安装 protoc..."
+    PROTOC_VERSION="3.15.0"  # 设置所需的版本
+    curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip"
+    unzip "protoc-$PROTOC_VERSION-linux-x86_64.zip" -d protoc3
+    sudo mv protoc3/bin/protoc /usr/local/bin/
+    sudo mv protoc3/include/* /usr/local/include/
+    rm -rf protoc3 "protoc-$PROTOC_VERSION-linux-x86_64.zip"  # 清理临时文件
+
     # 在 screen 会话中运行安装和启动命令
     echo "正在创建 screen 会话并运行节点..."
     screen -S nexus -dm sh -c 'curl https://cli.nexus.xyz/ | sh'
