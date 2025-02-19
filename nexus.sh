@@ -74,7 +74,7 @@ function set_prover_id() {
     fi
 }
 
-# 启动节点
+# 启动节点的函数
 function start_node() {
     # 更新系统和安装必要组件
     echo "正在更新系统并安装必要组件..."
