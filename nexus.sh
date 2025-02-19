@@ -74,11 +74,10 @@ function set_prover_id() {
     fi
 }
 
-# 启动节点的函数
 function start_node() {
-     # 更新系统和安装依赖
+    # 更新系统和安装依赖
     echo "正在更新系统并安装必要组件..."
-    if ! sudo apt update && sudo apt upgrade -y && sudo apt install build-essential pkg-config libssl-dev git-all protobuf-compiler -y; then
+    if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler curl unzip screen; then
         echo "安装基础组件失败"
         exit 1
     fi
@@ -103,6 +102,13 @@ function start_node() {
         exit 1
     fi
 
+    # 安装依赖：如果需要其他工具或库，可以在此处加入
+    echo "正在安装额外的依赖..."
+    if ! sudo apt install -y libudev-dev liblzma-dev; then
+        echo "安装额外依赖失败"
+        exit 1
+    fi
+
     # 下载并安装 protoc
     echo "正在下载并安装 protoc..."
     PROTOC_VERSION="3.15.0"  # 设置所需的版本
@@ -111,6 +117,14 @@ function start_node() {
     sudo mv protoc3/bin/protoc /usr/local/bin/
     sudo mv protoc3/include/* /usr/local/include/
     rm -rf protoc3 "protoc-$PROTOC_VERSION-linux-x86_64.zip"  # 清理临时文件
+
+    # 检查 protoc 是否安装成功
+    if ! command -v protoc &> /dev/null; then
+        echo "protoc 安装失败"
+        exit 1
+    else
+        echo "protoc 安装成功，版本: $(protoc --version)"
+    fi
 
     # 在 screen 会话中运行安装和启动命令
     echo "正在创建 screen 会话并运行节点..."
