@@ -54,11 +54,11 @@ function main_menu() {
 
 # 显示 ID 的函数
 function show_id() {
-    if [ -f /root/.nexus/prover-id ]; then
+    if [ -f /root/.nexus/node-id ]; then
         echo "Prover ID 内容:"
-        echo "$(</root/.nexus/prover-id)"
+        echo "$(</root/.nexus/node-id)"
     else
-        echo "文件 /root/.nexus/prover-id 不存在。"
+        echo "文件 /root/.nexus/node-id 不存在。"
     fi
     read -p "按任意键返回主菜单"
 }
