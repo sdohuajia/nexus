@@ -4,6 +4,9 @@
 SERVICE_NAME="nexus"
 SERVICE_FILE="/etc/systemd/system/nexus.service"
 
+# 定义节点ID文件路径
+PROVER_ID_FILE="/root/.nexus/node-id"
+
 # 脚本保存路径
 SCRIPT_PATH="$HOME/nexus.sh"
 
@@ -63,12 +66,12 @@ function show_id() {
     read -p "按任意键返回主菜单"
 }
 
-# 设置 ID 的函数
+# 设置节点ID的函数
 function set_prover_id() {
     read -p "请输入新的节点ID: " new_id
     if [ -n "$new_id" ]; then
         echo "$new_id" > "$PROVER_ID_FILE"
-        echo -e "${GREEN}节点ID已成功更新${NC}"
+        echo -e "${GREEN}节点ID已成功更新为: $new_id${NC}"
     else
         echo -e "${RED}错误：节点ID不能为空${NC}"
     fi
