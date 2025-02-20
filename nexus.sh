@@ -17,19 +17,19 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# 检查是否安装了screen命令
-function check_screen() {
-    if ! command -v screen &> /dev/null; then
-        echo "未检测到 screen 命令，正在安装..."
-        sudo apt install -y screen
-        if ! command -v screen &> /dev/null; then
-            echo "安装 screen 失败，请手动安装后再试。"
+# 检查是否安装了tmux命令
+function check_tmux() {
+    if ! command -v tmux &> /dev/null; then
+        echo "未检测到 tmux 命令，正在安装..."
+        sudo apt install -y tmux
+        if ! command -v tmux &> /dev/null; then
+            echo "安装 tmux 失败，请手动安装后再试。"
             exit 1
         else
-            echo "screen 安装成功。"
+            echo "tmux 安装成功。"
         fi
     else
-        echo "检测到 screen 已安装。"
+        echo "检测到 tmux 已安装。"
     fi
 }
 
@@ -95,11 +95,11 @@ function set_prover_id() {
 
 # 启动节点的函数
 function start_node() {
-    # 检查是否有名为 nexus 的 screen 会话，如果存在，则删除
-    if screen -list | grep -q "nexus"; then
-        echo "检测到已存在的 'nexus' screen 会话，正在删除..."
-        screen -S nexus -X quit
-        echo "'nexus' screen 会话已成功删除。"
+    # 检查是否有名为 nexus 的 tmux 会话，如果存在，则删除
+    if tmux has-session -t nexus 2>/dev/null; then
+        echo "检测到已存在的 'nexus' tmux 会话，正在删除..."
+        tmux kill-session -t nexus
+        echo "'nexus' tmux 会话已成功删除。"
     fi
 
     # 更新系统和安装必要组件
@@ -109,8 +109,8 @@ function start_node() {
         exit 1
     fi
 
-    # 检查并安装screen
-    check_screen
+    # 检查并安装tmux
+    check_tmux
 
     # 安装 Rust
     echo "正在安装 Rust..."
@@ -182,12 +182,12 @@ function start_node() {
         echo "protoc 安装成功，版本: $(protoc --version)"
     fi
 
-    # 在 screen 会话中运行安装和启动命令
-    echo "正在创建 screen 会话并运行节点..."
-    screen -S nexus -dm sh -c 'curl https://cli.nexus.xyz/ | sh'
+    # 在 tmux 会话中运行安装和启动命令
+    echo "正在创建 tmux 会话并运行节点..."
+    tmux new-session -d -s nexus 'curl https://cli.nexus.xyz/ | sh'
 
     echo "节点启动成功！节点正在后台运行。"
-    echo "使用 'screen -r nexus' 命令可以查看节点运行状态"
+    echo "使用 'tmux attach -t nexus' 命令可以查看节点运行状态"
     read -p "按任意键返回主菜单"
 }
 
