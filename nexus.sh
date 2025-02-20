@@ -33,8 +33,28 @@ function check_tmux() {
     fi
 }
 
+# 安装 OpenSSL 及其依赖
+function install_openssl() {
+    echo "正在安装 OpenSSL 和相关依赖..."
+    # 安装必要的开发包和工具
+    if ! sudo apt install -y build-essential pkg-config libssl-dev libudev-dev liblzma-dev unzip; then
+        echo "安装 OpenSSL 或相关依赖失败"
+        exit 1
+    fi
+
+    # 确保安装 gcc 编译器和 make 工具
+    echo "正在安装 gcc 和 make 工具..."
+    if ! sudo apt install -y gcc make; then
+        echo "安装 gcc 或 make 工具失败"
+        exit 1
+    fi
+}
+
 # 启动节点的函数
 function start_node() {
+    # 安装 OpenSSL 依赖
+    install_openssl
+
     # 检查是否有名为 nexus 的 screen 会话，如果存在，则删除
     if screen -list | grep -q "nexus"; then
         echo "检测到已存在的 'nexus' screen 会话，正在删除..."
@@ -44,15 +64,8 @@ function start_node() {
 
     # 更新系统和安装必要组件
     echo "正在更新系统并安装必要组件..."
-    if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler curl unzip screen; then
+    if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y git-all protobuf-compiler curl screen; then
         echo "安装基础组件失败"
-        exit 1
-    fi
-
-    # 确保安装 gcc 编译器和 make 工具
-    echo "正在安装 gcc 和 make 工具..."
-    if ! sudo apt install -y gcc make; then
-        echo "安装 gcc 或 make 工具失败"
         exit 1
     fi
 
@@ -73,13 +86,6 @@ function start_node() {
         echo "Rust 安装成功，当前版本: $(rustc --version)"
     else
         echo "Rust 环境加载失败"
-        exit 1
-    fi
-
-    # 安装额外的依赖
-    echo "正在安装额外的依赖..."
-    if ! sudo apt install -y libudev-dev liblzma-dev unzip; then
-        echo "安装额外依赖失败"
         exit 1
     fi
 
