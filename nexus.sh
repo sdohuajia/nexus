@@ -17,6 +17,22 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+# 检查是否安装了screen命令
+function check_screen() {
+    if ! command -v screen &> /dev/null; then
+        echo "未检测到 screen 命令，正在安装..."
+        sudo apt install -y screen
+        if ! command -v screen &> /dev/null; then
+            echo "安装 screen 失败，请手动安装后再试。"
+            exit 1
+        else
+            echo "screen 安装成功。"
+        fi
+    else
+        echo "检测到 screen 已安装。"
+    fi
+}
+
 # 主菜单函数
 function main_menu() {
     while true; do
@@ -88,10 +104,13 @@ function start_node() {
 
     # 更新系统和安装必要组件
     echo "正在更新系统并安装必要组件..."
-    if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler curl unzip screen; then
+    if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler curl unzip; then
         echo "安装基础组件失败"
         exit 1
     fi
+
+    # 检查并安装screen
+    check_screen
 
     # 安装 Rust
     echo "正在安装 Rust..."
