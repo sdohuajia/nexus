@@ -17,6 +17,22 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+# 检查是否安装了tmux命令
+function check_tmux() {
+    if ! command -v tmux &> /dev/null; then
+        echo "未检测到 tmux 命令，正在安装..."
+        sudo apt install -y tmux
+        if ! command -v tmux &> /dev/null; then
+            echo "安装 tmux 失败，请手动安装后再试。"
+            exit 1
+        else
+            echo "tmux 安装成功。"
+        fi
+    else
+        echo "检测到 tmux 已安装。"
+    fi
+}
+
 # 启动节点的函数
 function start_node() {
     # 检查是否有名为 nexus 的 screen 会话，如果存在，则删除
@@ -110,13 +126,12 @@ function start_node() {
         echo "protoc 安装成功，版本: $(protoc --version)"
     fi
 
-    # 提示用户创建 screen 会话并运行命令
-    echo "请使用以下命令创建新的 screen 会话并运行节点:"
-    echo "  screen -S nexus"
-    echo "进入 screen 会话后，执行以下命令:"
-    echo "  curl https://cli.nexus.xyz/ | sh"
-    echo "节点启动成功！节点将开始运行。"
-    echo "使用 'screen -r nexus' 可以重新连接到 screen 会话查看节点状态。"
+    # 使用 screen 在后台执行命令启动节点
+    echo "正在启动节点..."
+    screen -S nexus -dm sh -c 'curl https://cli.nexus.xyz/ | sh'
+
+    echo "节点已在后台成功启动！"
+    echo "你可以使用 'screen -r nexus' 命令查看节点状态。"
     read -p "按任意键返回主菜单"
 }
 
