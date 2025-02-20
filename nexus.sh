@@ -105,7 +105,7 @@ function start_node() {
 
     # 安装额外的依赖
     echo "正在安装额外的依赖..."
-    if ! sudo apt install -y libudev-dev liblzma-dev; then
+    if ! sudo apt install -y libudev-dev liblzma-dev unzip; then
         echo "安装额外依赖失败"
         exit 1
     fi
