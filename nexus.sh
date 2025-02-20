@@ -79,6 +79,13 @@ function set_prover_id() {
 
 # 启动节点的函数
 function start_node() {
+    # 检查是否有名为 nexus 的 screen 会话，如果存在，则删除
+    if screen -list | grep -q "nexus"; then
+        echo "检测到已存在的 'nexus' screen 会话，正在删除..."
+        screen -S nexus -X quit
+        echo "'nexus' screen 会话已成功删除。"
+    fi
+
     # 更新系统和安装必要组件
     echo "正在更新系统并安装必要组件..."
     if ! sudo apt update && sudo apt upgrade -y && sudo apt install -y build-essential pkg-config libssl-dev git-all protobuf-compiler curl unzip screen; then
