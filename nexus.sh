@@ -27,23 +27,17 @@ function start_node() {
         exit 1
     fi
 
-    # 重新加载环境变量
-    echo "正在加载 Rust 环境..."
-    if [ -f "$HOME/.cargo/env" ]; then
-        source "$HOME/.cargo/env"
-        export PATH="$HOME/.cargo/bin:$PATH"
+    # 获取安装后新添加的路径
+    if [ -f "/root/.bashrc" ]; then
+        NEW_PATH=$(bash -c 'source /root/.bashrc && echo $PATH')
+        export PATH="$NEW_PATH"
     else
-        echo "警告：未找到 $HOME/.cargo/env 文件，Rust 环境可能未正确安装。"
+        echo "警告：未找到 /root/.bashrc 文件，跳过 PATH 更新。"
     fi
 
-    # 加载 .bashrc 文件
-    echo "正在加载 .bashrc 文件..."
-    if [ -f "/root/.bashrc" ]; then
-        source "/root/.bashrc"
-    elif [ -f "/home/ubuntu/.bashrc" ]; then
-        source "/home/ubuntu/.bashrc"
-    else
-        echo "警告：未找到 /root/.bashrc 或 /home/ubuntu/.bashrc 文件，跳过加载。"
+    # 确保 ~/.local/bin 在 PATH 中
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        export PATH="$HOME/.local/bin:$PATH"
     fi
 
     # 提示用户输入 node-id
