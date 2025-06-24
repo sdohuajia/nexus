@@ -5,22 +5,6 @@ BASE_CONTAINER_NAME="nexus-node"
 IMAGE_NAME="nexus-node:latest"
 LOG_DIR="/root/nexus_logs"
 
-# 检查并安装 Node.js 和 pm2
-function check_node_pm2() {
-    # 检查是否安装了 Node.js
-    if ! command -v node >/dev/null 2>&1; then
-        echo "检测到未安装 Node.js，正在安装..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-        apt-get install -y nodejs
-    fi
-
-    # 检查是否安装了 pm2
-    if ! command -v pm2 >/dev/null 2>&1; then
-        echo "检测到未安装 pm2，正在安装..."
-        npm install -g pm2
-    fi
-}
-
 # 检查 Docker 是否安装
 function check_docker() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -33,6 +17,19 @@ function check_docker() {
         apt install -y docker-ce
         systemctl enable docker
         systemctl start docker
+    fi
+}
+
+# 检查 Node.js/npm/pm2 是否安装
+function check_pm2() {
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        echo "检测到未安装 Node.js/npm，正在安装..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+        apt-get install -y nodejs
+    fi
+    if ! command -v pm2 >/dev/null 2>&1; then
+        echo "检测到未安装 pm2，正在安装..."
+        npm install -g pm2
     fi
 }
 
@@ -398,58 +395,9 @@ function uninstall_all_nodes() {
     read -p "按任意键返回菜单"
 }
 
-# 设置默认的自动清理任务
-function setup_default_auto_cleanup() {
-    local days=2 # 默认保留7天的日志
-    
-    echo "正在设置自动日志清理（保留最近 $days 天的日志）..."
-
-    # check_node_pm2 会在 batch_rotate_nodes 中被调用，这里可以省略
-    
-    # 创建清理脚本
-    local script_dir="/root/nexus_scripts"
-    mkdir -p "$script_dir"
-    
-    cat > "$script_dir/cleanup_logs.sh" <<EOF
-#!/bin/bash
-set -e
-
-LOG_DIR="$LOG_DIR"
-DAYS_TO_KEEP=$days
-
-if [ -d "\$LOG_DIR" ]; then
-    # 查找并删除超过指定天数的日志文件
-    find "\$LOG_DIR" -name "*.log" -type f -mtime +\$DAYS_TO_KEEP -delete
-fi
-EOF
-
-    chmod +x "$script_dir/cleanup_logs.sh"
-    
-    # 停止旧的清理任务
-    pm2 delete nexus-cleanup 2>/dev/null || true
-    
-    # 创建定时任务脚本
-    cat > "$script_dir/cleanup_scheduler.sh" <<EOF
-#!/bin/bash
-set -e
-while true; do
-    # 每天执行一次
-    bash "$script_dir/cleanup_logs.sh"
-    sleep 86400 # 等待24小时
-done
-EOF
-
-    chmod +x "$script_dir/cleanup_scheduler.sh"
-    
-    # 使用 pm2 启动定时清理任务
-    pm2 start "$script_dir/cleanup_scheduler.sh" --name "nexus-cleanup" --no-autorestart
-    pm2 save
-    
-    echo "自动日志清理任务已成功设置！将每天清理超过 $days 天的日志。"
-}
-
 # 批量节点轮换启动
 function batch_rotate_nodes() {
+    check_pm2
     echo "请输入多个 node-id，每行一个，输入空行结束："
     echo "（输入完成后按回车键，然后按 Ctrl+D 结束输入）"
     
@@ -483,9 +431,6 @@ function batch_rotate_nodes() {
     local total_nodes=${#node_ids[@]}
     local num_groups=$(( (total_nodes + nodes_per_round - 1) / nodes_per_round ))
     echo "节点将分为 $num_groups 组进行轮换"
-
-    # 检查并安装 Node.js 和 pm2
-    check_node_pm2
 
     # 直接删除旧的轮换进程
     echo "停止旧的轮换进程..."
@@ -584,33 +529,48 @@ EOF
     echo "使用 'pm2 status' 查看运行状态"
     echo "使用 'pm2 logs nexus-rotate' 查看轮换日志"
     echo "使用 'pm2 stop nexus-rotate' 停止轮换"
-
-    # 添加自动清理任务
-    setup_default_auto_cleanup
-    
     read -p "按任意键返回菜单"
 }
 
+# 设置定时清理日志任务（每2天清理一次，只保留最近2天的日志）
+function setup_log_cleanup_cron() {
+    local cron_job="0 3 */2 * * find $LOG_DIR -type f -name 'nexus-*.log' -mtime +2 -delete"
+    # 检查是否已存在相同的定时任务
+    (crontab -l 2>/dev/null | grep -v -F "$cron_job"; echo "$cron_job") | crontab -
+    echo "已设置每2天自动清理，只保留最近2天日志的任务。"
+}
+
 # 主菜单
+setup_log_cleanup_cron
 while true; do
     clear
     echo "脚本由哈哈哈哈编写，推特 @ferdie_jhovie，免费开源，请勿相信收费"
     echo "如有问题，可联系推特，仅此只有一个号"
     echo "========== Nexus 多节点管理 =========="
-    echo "1. 批量节点轮换启动"
+    echo "1. 安装并启动新节点"
     echo "2. 显示所有节点状态"
     echo "3. 批量停止并卸载指定节点"
     echo "4. 查看指定节点日志"
-    echo "5. 删除全部节点"
-    echo "6. 退出"
+    echo "5. 批量节点轮换启动"
+    echo "6. 删除全部节点"
+    echo "7. 退出"
     echo "==================================="
 
-    read -rp "请输入选项(1-6): " choice
+    read -rp "请输入选项(1-7): " choice
 
     case $choice in
         1)
             check_docker
-            batch_rotate_nodes
+            read -rp "请输入您的 node-id: " NODE_ID
+            if [ -z "$NODE_ID" ]; then
+                echo "node-id 不能为空，请重新选择。"
+                read -p "按任意键继续"
+                continue
+            fi
+            echo "开始构建镜像并启动容器..."
+            build_image
+            run_container "$NODE_ID"
+            read -p "按任意键返回菜单"
             ;;
         2)
             list_nodes
@@ -622,9 +582,13 @@ while true; do
             select_node_to_view
             ;;
         5)
-            uninstall_all_nodes
+            check_docker
+            batch_rotate_nodes
             ;;
         6)
+            uninstall_all_nodes
+            ;;
+        7)
             echo "退出脚本。"
             exit 0
             ;;
