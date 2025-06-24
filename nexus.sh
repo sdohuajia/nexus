@@ -398,6 +398,56 @@ function uninstall_all_nodes() {
     read -p "按任意键返回菜单"
 }
 
+# 设置默认的自动清理任务
+function setup_default_auto_cleanup() {
+    local days=2 # 默认保留7天的日志
+    
+    echo "正在设置自动日志清理（保留最近 $days 天的日志）..."
+
+    # check_node_pm2 会在 batch_rotate_nodes 中被调用，这里可以省略
+    
+    # 创建清理脚本
+    local script_dir="/root/nexus_scripts"
+    mkdir -p "$script_dir"
+    
+    cat > "$script_dir/cleanup_logs.sh" <<EOF
+#!/bin/bash
+set -e
+
+LOG_DIR="$LOG_DIR"
+DAYS_TO_KEEP=$days
+
+if [ -d "\$LOG_DIR" ]; then
+    # 查找并删除超过指定天数的日志文件
+    find "\$LOG_DIR" -name "*.log" -type f -mtime +\$DAYS_TO_KEEP -delete
+fi
+EOF
+
+    chmod +x "$script_dir/cleanup_logs.sh"
+    
+    # 停止旧的清理任务
+    pm2 delete nexus-cleanup 2>/dev/null || true
+    
+    # 创建定时任务脚本
+    cat > "$script_dir/cleanup_scheduler.sh" <<EOF
+#!/bin/bash
+set -e
+while true; do
+    # 每天执行一次
+    bash "$script_dir/cleanup_logs.sh"
+    sleep 86400 # 等待24小时
+done
+EOF
+
+    chmod +x "$script_dir/cleanup_scheduler.sh"
+    
+    # 使用 pm2 启动定时清理任务
+    pm2 start "$script_dir/cleanup_scheduler.sh" --name "nexus-cleanup" --no-autorestart
+    pm2 save
+    
+    echo "自动日志清理任务已成功设置！将每天清理超过 $days 天的日志。"
+}
+
 # 批量节点轮换启动
 function batch_rotate_nodes() {
     echo "请输入多个 node-id，每行一个，输入空行结束："
@@ -534,6 +584,10 @@ EOF
     echo "使用 'pm2 status' 查看运行状态"
     echo "使用 'pm2 logs nexus-rotate' 查看轮换日志"
     echo "使用 'pm2 stop nexus-rotate' 停止轮换"
+
+    # 添加自动清理任务
+    setup_default_auto_cleanup
+    
     read -p "按任意键返回菜单"
 }
 
