@@ -20,17 +20,6 @@ function check_docker() {
     fi
 }
 
-# 检查并安装 cron 服务
-function check_cron() {
-    if ! command -v cron >/dev/null 2>&1; then
-        echo "检测到未安装 cron，正在安装..."
-        apt update
-        apt install -y cron
-        systemctl enable cron
-        systemctl start cron
-    fi
-}
-
 # 构建docker镜像函数
 function build_image() {
     WORKDIR=$(mktemp -d)
@@ -103,7 +92,7 @@ EOF
     rm -rf "$WORKDIR"
 }
 
-# 启动容器（挂载宿主机日志文件，并设置每日删除日志的cron任务）
+# 启动容器（挂载宿主机日志文件）
 function run_container() {
     local node_id=$1
     local container_name="${BASE_CONTAINER_NAME}-${node_id}"
@@ -123,34 +112,15 @@ function run_container() {
         chmod 644 "$log_file"
     fi
 
-    # 启动容器
     docker run -d --name "$container_name" -v "$log_file":/root/nexus.log -e NODE_ID="$node_id" "$IMAGE_NAME"
     echo "容器 $container_name 已启动！"
-
-    # 检查并安装 cron
-    check_cron
-
-    # 设置每日删除日志文件的 cron 任务
-    local cron_job="0 0 * * * rm -f $log_file"
-    local cron_file="/etc/cron.d/nexus-log-cleanup-${node_id}"
-
-    # 清理旧的同名 cron 任务
-    if [ -f "$cron_file" ]; then
-        rm -f "$cron_file"
-    fi
-
-    # 创建新的 cron 任务
-    echo "$cron_job" > "$cron_file"
-    chmod 0644 "$cron_file"
-    echo "已为节点 $node_id 设置每日凌晨删除日志文件的 cron 任务"
 }
 
-# 停止并卸载容器和镜像、删除日志及相关cron任务
+# 停止并卸载容器和镜像、删除日志
 function uninstall_node() {
     local node_id=$1
     local container_name="${BASE_CONTAINER_NAME}-${node_id}"
     local log_file="${LOG_DIR}/nexus-${node_id}.log"
-    local cron_file="/etc/cron.d/nexus-log-cleanup-${node_id}"
 
     echo "停止并删除容器 $container_name..."
     docker rm -f "$container_name" 2>/dev/null || echo "容器不存在或已停止"
@@ -160,13 +130,6 @@ function uninstall_node() {
         rm -f "$log_file"
     else
         echo "日志文件不存在：$log_file"
-    fi
-
-    if [ -f "$cron_file" ]; then
-        echo "删除 cron 任务 $cron_file ..."
-        rm -f "$cron_file"
-    else
-        echo "cron 任务不存在：$cron_file"
     fi
 
     echo "节点 $node_id 已卸载完成。"
@@ -419,13 +382,155 @@ function uninstall_all_nodes() {
     read -p "按任意键返回菜单"
 }
 
+# 批量节点轮换启动
+function batch_rotate_nodes() {
+    echo "请输入多个 node-id，每行一个，输入空行结束："
+    echo "（输入完成后按回车键，然后按 Ctrl+D 结束输入）"
+    
+    local node_ids=()
+    while read -r line; do
+        if [ -n "$line" ]; then
+            node_ids+=("$line")
+        fi
+    done
+
+    if [ ${#node_ids[@]} -eq 0 ]; then
+        echo "未输入任何 node-id，返回主菜单"
+        read -p "按任意键继续"
+        return
+    fi
+
+    # 设置每两小时启动的节点数量
+    read -rp "请输入每两小时要启动的节点数量（默认：${#node_ids[@]}的一半，向上取整）: " nodes_per_round
+    if [ -z "$nodes_per_round" ]; then
+        nodes_per_round=$(( (${#node_ids[@]} + 1) / 2 ))
+    fi
+
+    # 验证输入
+    if ! [[ "$nodes_per_round" =~ ^[0-9]+$ ]] || [ "$nodes_per_round" -lt 1 ] || [ "$nodes_per_round" -gt ${#node_ids[@]} ]; then
+        echo "无效的节点数量，请输入1到${#node_ids[@]}之间的数字"
+        read -p "按任意键返回菜单"
+        return
+    fi
+
+    # 计算需要多少组
+    local total_nodes=${#node_ids[@]}
+    local num_groups=$(( (total_nodes + nodes_per_round - 1) / nodes_per_round ))
+    echo "节点将分为 $num_groups 组进行轮换"
+
+    # 检查是否安装了 pm2
+    if ! command -v pm2 >/dev/null 2>&1; then
+        echo "正在安装 pm2..."
+        npm install -g pm2
+    fi
+
+    # 直接删除旧的轮换进程
+    echo "停止旧的轮换进程..."
+    pm2 delete nexus-rotate 2>/dev/null || true
+
+    echo "开始构建镜像..."
+    build_image
+
+    # 创建启动脚本目录
+    local script_dir="/root/nexus_scripts"
+    mkdir -p "$script_dir"
+
+    # 为每组创建启动脚本
+    for ((group=1; group<=num_groups; group++)); do
+        cat > "$script_dir/start_group${group}.sh" <<EOF
+#!/bin/bash
+set -e
+
+# 停止并删除所有现有容器
+docker ps -a --filter "name=${BASE_CONTAINER_NAME}" --format "{{.Names}}" | xargs -r docker rm -f
+
+# 启动第${group}组节点
+EOF
+    done
+
+    # 添加节点到对应的启动脚本
+    for i in "${!node_ids[@]}"; do
+        local node_id=${node_ids[$i]}
+        local container_name="${BASE_CONTAINER_NAME}-${node_id}"
+        local log_file="${LOG_DIR}/nexus-${node_id}.log"
+        
+        # 计算节点属于哪一组
+        local group_num=$(( i / nodes_per_round + 1 ))
+        if [ $group_num -gt $num_groups ]; then
+            group_num=$num_groups
+        fi
+        
+        # 确保日志目录和文件存在
+        mkdir -p "$LOG_DIR"
+        # 如果日志文件是目录，先删除
+        if [ -d "$log_file" ]; then
+            rm -rf "$log_file"
+        fi
+        # 如果日志文件不存在则新建
+        if [ ! -f "$log_file" ]; then
+            touch "$log_file"
+            chmod 644 "$log_file"
+        fi
+
+        # 添加到对应组的启动脚本
+        echo "echo \"[$(date '+%Y-%m-%d %H:%M:%S')] 启动节点 $node_id ...\"" >> "$script_dir/start_group${group_num}.sh"
+        echo "docker run -d --name $container_name -v $log_file:/root/nexus.log -e NODE_ID=$node_id $IMAGE_NAME" >> "$script_dir/start_group${group_num}.sh"
+        echo "sleep 30" >> "$script_dir/start_group${group_num}.sh"
+    done
+
+    # 创建轮换脚本
+    cat > "$script_dir/rotate.sh" <<EOF
+#!/bin/bash
+set -e
+
+while true; do
+EOF
+
+    # 添加每组启动命令到轮换脚本
+    for ((group=1; group<=num_groups; group++)); do
+        # 计算当前组的节点数量
+        local start_idx=$(( (group-1) * nodes_per_round ))
+        local end_idx=$(( group * nodes_per_round ))
+        if [ $end_idx -gt $total_nodes ]; then
+            end_idx=$total_nodes
+        fi
+        local current_group_nodes=$(( end_idx - start_idx ))
+
+        cat >> "$script_dir/rotate.sh" <<EOF
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 启动第${group}组节点（${current_group_nodes}个）..."
+    bash "$script_dir/start_group${group}.sh"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 等待2小时..."
+    sleep 7200
+
+EOF
+    done
+
+    # 完成轮换脚本
+    echo "done" >> "$script_dir/rotate.sh"
+
+    # 设置脚本权限
+    chmod +x "$script_dir"/*.sh
+
+    # 使用 pm2 启动轮换脚本
+    pm2 start "$script_dir/rotate.sh" --name "nexus-rotate"
+    pm2 save
+
+    echo "节点轮换已启动！"
+    echo "总共 $total_nodes 个节点，分为 $num_groups 组"
+    echo "每组启动 $nodes_per_round 个节点（最后一组可能不足），每2小时轮换一次"
+    echo "使用 'pm2 status' 查看运行状态"
+    echo "使用 'pm2 logs nexus-rotate' 查看轮换日志"
+    echo "使用 'pm2 stop nexus-rotate' 停止轮换"
+    read -p "按任意键返回菜单"
+}
+
 # 主菜单
 while true; do
     clear
     echo "脚本由哈哈哈哈编写，推特 @ferdie_jhovie，免费开源，请勿相信收费"
     echo "如有问题，可联系推特，仅此只有一个号"
     echo "========== Nexus 多节点管理 =========="
-    echo "1. 安装并启动新节点"
+    echo "1. 批量节点轮换启动"
     echo "2. 显示所有节点状态"
     echo "3. 批量停止并卸载指定节点"
     echo "4. 查看指定节点日志"
@@ -438,16 +543,7 @@ while true; do
     case $choice in
         1)
             check_docker
-            read -rp "请输入您的 node-id: " NODE_ID
-            if [ -z "$NODE_ID" ]; then
-                echo "node-id 不能为空，请重新选择。"
-                read -p "按任意键继续"
-                continue
-            fi
-            echo "开始构建镜像并启动容器..."
-            build_image
-            run_container "$NODE_ID"
-            read -p "按任意键返回菜单"
+            batch_rotate_nodes
             ;;
         2)
             list_nodes
