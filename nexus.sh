@@ -5,6 +5,22 @@ BASE_CONTAINER_NAME="nexus-node"
 IMAGE_NAME="nexus-node:latest"
 LOG_DIR="/root/nexus_logs"
 
+# 检查并安装 Node.js 和 pm2
+function check_node_pm2() {
+    # 检查是否安装了 Node.js
+    if ! command -v node >/dev/null 2>&1; then
+        echo "检测到未安装 Node.js，正在安装..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+    fi
+
+    # 检查是否安装了 pm2
+    if ! command -v pm2 >/dev/null 2>&1; then
+        echo "检测到未安装 pm2，正在安装..."
+        npm install -g pm2
+    fi
+}
+
 # 检查 Docker 是否安装
 function check_docker() {
     if ! command -v docker >/dev/null 2>&1; then
