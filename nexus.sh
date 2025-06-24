@@ -20,6 +20,17 @@ function check_docker() {
     fi
 }
 
+# 检查并安装 cron 服务
+function check_cron() {
+    if ! command -v cron >/dev/null 2>&1; then
+        echo "检测到未安装 cron，正在安装..."
+        apt update
+        apt install -y cron
+        systemctl enable cron
+        systemctl start cron
+    fi
+}
+
 # 构建docker镜像函数
 function build_image() {
     WORKDIR=$(mktemp -d)
@@ -92,7 +103,7 @@ EOF
     rm -rf "$WORKDIR"
 }
 
-# 启动容器（挂载宿主机日志文件）
+# 启动容器（挂载宿主机日志文件，并设置每日删除日志的cron任务）
 function run_container() {
     local node_id=$1
     local container_name="${BASE_CONTAINER_NAME}-${node_id}"
@@ -112,15 +123,34 @@ function run_container() {
         chmod 644 "$log_file"
     fi
 
+    # 启动容器
     docker run -d --name "$container_name" -v "$log_file":/root/nexus.log -e NODE_ID="$node_id" "$IMAGE_NAME"
     echo "容器 $container_name 已启动！"
+
+    # 检查并安装 cron
+    check_cron
+
+    # 设置每日删除日志文件的 cron 任务
+    local cron_job="0 0 * * * rm -f $log_file"
+    local cron_file="/etc/cron.d/nexus-log-cleanup-${node_id}"
+
+    # 清理旧的同名 cron 任务
+    if [ -f "$cron_file" ]; then
+        rm -f "$cron_file"
+    fi
+
+    # 创建新的 cron 任务
+    echo "$cron_job" > "$cron_file"
+    chmod 0644 "$cron_file"
+    echo "已为节点 $node_id 设置每日凌晨删除日志文件的 cron 任务"
 }
 
-# 停止并卸载容器和镜像、删除日志
+# 停止并卸载容器和镜像、删除日志及相关cron任务
 function uninstall_node() {
     local node_id=$1
     local container_name="${BASE_CONTAINER_NAME}-${node_id}"
     local log_file="${LOG_DIR}/nexus-${node_id}.log"
+    local cron_file="/etc/cron.d/nexus-log-cleanup-${node_id}"
 
     echo "停止并删除容器 $container_name..."
     docker rm -f "$container_name" 2>/dev/null || echo "容器不存在或已停止"
@@ -130,6 +160,13 @@ function uninstall_node() {
         rm -f "$log_file"
     else
         echo "日志文件不存在：$log_file"
+    fi
+
+    if [ -f "$cron_file" ]; then
+        echo "删除 cron 任务 $cron_file ..."
+        rm -f "$cron_file"
+    else
+        echo "cron 任务不存在：$cron_file"
     fi
 
     echo "节点 $node_id 已卸载完成。"
