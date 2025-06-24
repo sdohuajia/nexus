@@ -434,11 +434,8 @@ function batch_rotate_nodes() {
     local num_groups=$(( (total_nodes + nodes_per_round - 1) / nodes_per_round ))
     echo "节点将分为 $num_groups 组进行轮换"
 
-    # 检查是否安装了 pm2
-    if ! command -v pm2 >/dev/null 2>&1; then
-        echo "正在安装 pm2..."
-        npm install -g pm2
-    fi
+    # 检查并安装 Node.js 和 pm2
+    check_node_pm2
 
     # 直接删除旧的轮换进程
     echo "停止旧的轮换进程..."
@@ -582,4 +579,4 @@ while true; do
             read -p "按任意键继续"
             ;;
     esac
-done
+done 
