@@ -391,6 +391,14 @@ function uninstall_all_nodes() {
         uninstall_node "$node_id"
     done
 
+    # 删除 /root/nexus_scripts 目录
+    if [ -d "/root/nexus_scripts" ]; then
+        echo "删除 /root/nexus_scripts 目录..."
+        rm -rf "/root/nexus_scripts"
+    else
+        echo "/root/nexus_scripts 目录不存在"
+    fi
+
     echo "所有节点已删除完成！"
     read -p "按任意键返回菜单"
 }
